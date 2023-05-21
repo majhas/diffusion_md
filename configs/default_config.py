@@ -45,14 +45,7 @@ model_config.noise_schedule = 'polynomial3'
 config.model_config = model_config
 
 
-dynamics_config = ConfigDict(**{})
-dynamics_config.dim = model_config.in_node_nf
-dynamics_config.in_edge_nf = 1
-dynamics_config.hidden_nf = 64
-dynamics_config.act_fn = nn.SiLU()
-dynamics_config.n_layers = 3
-dynamics_config.attention = False
-dynamics_config.norm_dff = True
+config.dynamics_config = ConfigDict(**{})
 
 ##############################################################################################################
 
@@ -80,7 +73,7 @@ optimizer_config = {
                 'betas': (0.9, 0.99)
             }
 
-config.trainer_config.optimizer_config = ConfigDict(**optimizer_config)
+config.optimizer_config = ConfigDict(**optimizer_config)
 
 # Learning rate scheduler for OneCycleLR with cosine annealling schedule
 lr_scheduler_config = {
@@ -89,5 +82,5 @@ lr_scheduler_config = {
                 'pct_start': 0.2
                 }
 
-config.trainer_config.scheduler_config = ConfigDict(**lr_scheduler_config)
+config.scheduler_config = ConfigDict(**lr_scheduler_config)
 
