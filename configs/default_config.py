@@ -1,11 +1,11 @@
 import torch.nn as nn
 
+from pathlib import Path
+
 from .config_dict import ConfigDict
 
 
 config = ConfigDict(**{})
-
-
 
 
 ##############################################################################################################
@@ -17,9 +17,13 @@ config = ConfigDict(**{})
 ##############################################################################################################
 
 data_config = ConfigDict(**{})
-data_config.data_dir = 'data/ala2/'
+data_config.data_dir = Path('data/ala2/')
+data_config.traj_filepath = data_config.data_dir.joinpath('ala2_cg_data.npz')
+data_config.pdb_filepath = data_config.data_dir.joinpath('ala2_cg.pdb')
+
 data_config.batch_size = 256
 
+config.data_config = data_config
 ##############################################################################################################
 
 
