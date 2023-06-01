@@ -44,18 +44,16 @@ class DDPM(nn.Module):
     def __init__(
             self,
             dynamics, 
-            in_node_nf: int, 
             n_dim: int =3,
             timesteps: int =1000, 
             noise_schedule: str ='cosine',
             noise_precision: float =1e-4,
             loss_type = 'mse'
         ):
-    
+        super(DDPM, self).__init__()
         self.loss_type = loss_type
         self.dynamics = dynamics
 
-        self.in_node_nf = in_node_nf     # dimension size for node input features
         self.n_dim = n_dim               # dimension size for node positions
 
         self.T = timesteps
@@ -76,47 +74,49 @@ class DDPM(nn.Module):
         sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
         one_minus_alphas_cumprod = 1. - alphas_cumprod
 
-        register_buffer('alphas', alphas)
-        register_buffer('betas', betas)
-        register_buffer('alphas_cumprod', alphas_cumprod)
-        register_buffer('alphas_cumprod_prev', alphas_cumprod_prev)
-        register_buffer('sqrt_alphas_cumprod', sqrt_alphas_cumprod)
-        register_buffer('one_minus_alphas_cumprod', one_minus_alphas_cumprod)
+        self.register_buffer('alphas', alphas)
+        self.register_buffer('betas', betas)
+        self.register_buffer('alphas_cumprod', alphas_cumprod)
+        self.register_buffer('alphas_cumprod_prev', alphas_cumprod_prev)
+        self.register_buffer('sqrt_alphas_cumprod', sqrt_alphas_cumprod)
+        self.register_buffer('one_minus_alphas_cumprod', one_minus_alphas_cumprod)
 
         sqrt_alphas_cumprod_recip = 1. / sqrt_alphas_cumprod
         reverse_eps_coef = betas * (torch.sqrt(1. - alphas_cumprod)) / (1. - alphas_cumprod)
         sqrt_variance = torch.sqrt(betas * (1 - alphas_cumprod_prev) / (1 - alphas_cumprod))
 
-        register_buffer('sqrt_alphas_cumprod_recip', sqrt_alphas_cumprod_recip)
-        register_buffer('reverse_eps_coef', reverse_eps_coef)
-        register_buffer('sqrt_variance', sqrt_variance)
+        self.register_buffer('sqrt_alphas_cumprod_recip', sqrt_alphas_cumprod_recip)
+        self.register_buffer('reverse_eps_coef', reverse_eps_coef)
+        self.register_buffer('sqrt_variance', sqrt_variance)
 
 
 
 
-    def forward(self, z_t, t):
-        return self.dynamics(z_t, t)
+    def forward(self, x, pos, t):
+        return self.dynamics(x=x, pos=pos, t=t)
 
     
     def forward_process(self, x, t):
+        sqrt_alphas_cumprod_t = self.sqrt_alphas_cumprod[t].unsqueeze(-1)
+        one_minus_alphas_cumprod_t = self.one_minus_alphas_cumprod[t].unsqueeze(-1)
 
-        sqrt_alphas_cumprod_t = self.sqrt_alphas_cumprod_t.gather(-1, t)
-        one_minus_alphas_cumprod_t = self.one_minus_alphas_cumprod.gather(-1, t)
-
-        eps = torch.randn(x.shape)
+        eps = torch.randn(x.shape).to(x.device)
 
         z_t = sqrt_alphas_cumprod_t*x + one_minus_alphas_cumprod_t*eps
         return z_t, eps
 
 
-    def reverse_process(self, z_t, timesteps=self.T):
+    def reverse_process(self, z_t, timesteps=None):
+
+        if timesteps is None:
+            timesteps = self.T
 
         reversed_timesteps = torch.tensor(reversed(list(range(timesteps+1))), dtype=torch.long)
         for t in reversed_timesteps:
 
-            sqrt_alphas_cumprod_recip_t = self.sqrt_alphas_cumprod_recip.gather(-1, t)            
-            reverse_eps_coef_t = self.reverse_eps_coef.gather(-1, t)            
-            sqrt_variance_t = self.sqrt_variance.gather(-1, t)            
+            sqrt_alphas_cumprod_recip_t = self.sqrt_alphas_cumprod_recip[t]         
+            reverse_eps_coef_t = self.reverse_eps_coef[t]     
+            sqrt_variance_t = self.sqrt_variance.gather[t]            
             noise = torch.randn(1)
 
             z_t = (sqrt_alphas_cumprod_recip_t)*(z_t - reverse_eps_coef_t*eps) + sqrt_variance_t*noise
@@ -125,15 +125,13 @@ class DDPM(nn.Module):
 
 
 
-    def get_loss(self, batch):
+    def get_loss(self, x, pos):
 
+        t = torch.randint(0, self.T+1, size=(len(pos), 1), device=pos.device) 
 
-        t = torch.randint(0, self.T+1, size=(len(batch), 1), device=batch.device) 
+        z_t, eps = self.forward_process(pos, t)
 
-        x = batch.x
-        z_t, eps = self.forward_process(x, t)
-
-        predicted_eps = self.forward(z_t, t/self.T)
+        predicted_eps = self.forward(x=x, pos=z_t, t=t/self.T)
 
         return self.loss_f(predicted_eps, eps)
 
