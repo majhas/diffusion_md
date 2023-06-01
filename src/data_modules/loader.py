@@ -61,6 +61,46 @@ class TorsionLoader(Dataset):
 
 
 
+
+class TrajectoryLoader(Dataset):
+    def __init__(self, filepath=None, dataset=None, transform=None):
+        super(TrajectoryLoader, self).__init__()
+        
+        assert (filepath is None) ^ (dataset is None)
+
+        if filepath is not None:
+            dataset = np.load(filepath)
+
+        self.dataset = torch.from_numpy(dataset).float()
+        self.transform = None
+
+        if transform == 'minmax':
+            min_value = self.dataset.min(0).item()
+            max_value = self.dataset.max(0).item()
+            self.transform = MinMaxTransform(min_value, max_value)
+
+        elif transform == 'whiten':
+            mean = self.dataset.mean(0).item()
+            std = self.dataset.std(0).item()
+            self.transform = WhitenTransform(mean, std)
+
+        if self.transform is not None:
+            self.dataset = self.transform(self.dataset)
+
+        if len(self.dataset.shape) < 2:
+            self.dataset = self.dataset.unsqueeze(1)
+
+   
+    def __getitem__(self, index):
+        return self.dataset[index]
+
+
+    def __len__(self):
+        return self.dataset.size(0)
+
+
+
+
 class SimulationLoader(Dataset):
     def __init__(self, filepath=None, dataset=None, transform=None):
         super(SimulationLoader, self).__init__()
