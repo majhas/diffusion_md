@@ -33,24 +33,30 @@ config.data_config = data_config
 ##############################################################################################################
 
 model_config = ConfigDict(**{})
-model_config.in_node_nf = 0
-model_config.n_dim = 3
-model_config.timesteps = 1000
-model_config.noise_schedule = 'polynomial3'
+model_config.n_nodes = 5
+model_config.in_node_nf = 64
+model_config.in_edge_nf = 1
+model_config.hidden_nf = 96
+model_config.n_processor_layers = 2
+model_config.rel_pos_emb=True
+model_config.norm_edges=True
+model_config.with_feedforwards=True
+model_config.gated_residual=True
 
-# # Encoder layers for the input node features
-# model_config.n_encoder_layers = 1
-# model_config.encoder_mlp_size = 2
+diffusion_config = ConfigDict(**{})
 
-# # Processor layers for the graph network to process
-# model_config.n_processor_layers = 2
-# model_config.processor_mlp_size = 2
+diffusion_config.n_dim = 3
+diffusion_config.timesteps = 1000
+diffusion_config.noise_schedule = 'cosine'
 
 config.model_config = model_config
+config.diffusion_config = diffusion_config
 
-
-config.dynamics_config = ConfigDict(**{})
-
+config.lr = 1.e-4
+config.weight_decay = 1e-12
+config.n_steps = 100_000
+config.batch_size = 512
+config.device = 'cuda'
 ##############################################################################################################
 
 
